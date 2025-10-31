@@ -157,30 +157,29 @@ const mockApi = {
     const product = mockProducts.find(p => p.id === productId);
     if (!product) return [];
     
-    // Find related products based on category, brand, and tags
-    const related = mockProducts
-      .filter(p => p.id !== productId)
-      .map(p => {
-        let score = 0;
-        
-        // Same category (weight: 0.4)
-        if (p.category === product.category) score += 0.4;
-        
-        // Same brand (weight: 0.3)
-        if (p.brand === product.brand) score += 0.3;
-        
-        // Overlapping tags (weight: 0.3)
-        const overlappingTags = p.tags?.filter(tag => product.tags?.includes(tag)).length || 0;
-        if (overlappingTags > 0 && product.tags) {
-          score += (overlappingTags / product.tags.length) * 0.3;
+    // Import mockMoodboards
+    const { mockMoodboards } = await import('@/data/mock-data');
+    
+    // Step 1: Find all moodboards that contain this product
+    const containingMoodboards = mockMoodboards.filter(moodboard =>
+      moodboard.products.some(p => p.id === productId)
+    );
+    
+    if (containingMoodboards.length === 0) return [];
+    
+    // Step 2: Get all products from those moodboards, excluding current product and duplicates
+    const relatedProductsMap = new Map<string, Product>();
+    
+    containingMoodboards.forEach(moodboard => {
+      moodboard.products.forEach(p => {
+        if (p.id !== productId && !relatedProductsMap.has(p.id)) {
+          relatedProductsMap.set(p.id, p);
         }
-        
-        return { product: p, score };
-      })
-      .filter(({ score }) => score > 0)
-      .sort((a, b) => b.score - a.score)
-      ?.slice(0, limit)
-      ?.map(({ product }) => product) || [];
+      });
+    });
+    
+    // Step 3: Convert to array and limit results
+    const related = Array.from(relatedProductsMap.values()).slice(0, limit);
     
     return related;
   },
@@ -230,17 +229,18 @@ const realApi = {
 
   async getProductBySlug(slug: string, includeRelated?: boolean): Promise<ProductDetailResponse | null> {
     try {
-      // Backend returns the product object directly, not wrapped
-      const product = await apiClient.get<Product>(`/products/slug/${slug}`);
-      if (!includeRelated) return { product };
-
-      let relatedProducts: Product[] = [];
-      try {
-        relatedProducts = await this.getRelatedProducts(product.id, 4);
-      } catch {
-        relatedProducts = [];
-      }
-      return { product, relatedProducts };
+      // Backend returns product with optional related products in product.related
+      const params = includeRelated ? { includeRelated: 'true' } : undefined;
+      const response = await apiClient.get<Product & { related?: Product[] }>(`/products/slug/${slug}`, { params });
+      
+      // Extract related products from response.related if present
+      const relatedProducts = response.related || [];
+      const { related, ...product } = response;
+      
+      return { 
+        product,
+        relatedProducts 
+      };
     } catch (error) {
       if (error instanceof Error && 'status' in error && (error as any).status === 404) {
         return null;

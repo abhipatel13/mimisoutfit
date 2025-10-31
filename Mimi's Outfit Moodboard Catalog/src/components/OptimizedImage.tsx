@@ -43,9 +43,14 @@ export default function OptimizedImage({
   placeholder = 'blurhash',
   objectFit = 'cover',
 }: OptimizedImageProps) {
+  // Default fallback image URL
+  const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1441986300917-64674bd600d8';
+  
   const [isLoaded, setIsLoaded] = useState(false);
   const [isInView, setIsInView] = useState(priority); // Load immediately if priority
   const [hasError, setHasError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState<string | undefined>(src);
+  const [hasTriedFallback, setHasTriedFallback] = useState(false);
   const [blurhashUrl, setBlurhashUrl] = useState<string>('');
   const imgRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -57,7 +62,7 @@ export default function OptimizedImage({
 
   // Generate blurhash canvas on mount (only if blurhash is provided)
   useEffect(() => {
-    if (!shouldUseBlurhash || !canvasRef.current) return;
+    if (!shouldUseBlurhash || !canvasRef.current || !blurhash) return;
 
     try{
       const canvas = canvasRef.current;
@@ -83,7 +88,7 @@ export default function OptimizedImage({
       console.warn('[OptimizedImage] Blurhash decode failed, using simple blur fallback:', error);
       // Silently fallback to simple blur - no user-facing error
     }
-  }, [shouldUseBlurhash, aspectRatio]);
+  }, [shouldUseBlurhash, blurhash, aspectRatio]);
 
   // Intersection Observer for lazy loading
   useEffect(() => {
@@ -111,12 +116,29 @@ export default function OptimizedImage({
     };
   }, [priority]);
 
+  // Update currentSrc when src prop changes
+  useEffect(() => {
+    setCurrentSrc(src);
+    setHasError(false);
+    setHasTriedFallback(false);
+    setIsLoaded(false);
+  }, [src]);
+
   const handleLoad = () => {
     setIsLoaded(true);
     onLoad?.();
   };
 
   const handleError = () => {
+    // Try fallback image first if we haven't already
+    if (!hasTriedFallback && currentSrc === src && src !== FALLBACK_IMAGE) {
+      setHasTriedFallback(true);
+      setCurrentSrc(FALLBACK_IMAGE);
+      setIsLoaded(false);
+      return;
+    }
+    
+    // If fallback also fails or we've already tried it, show error placeholder
     setHasError(true);
     setIsLoaded(true);
     onError?.();
@@ -129,11 +151,13 @@ export default function OptimizedImage({
     if (!src) return undefined;
     // If using Unsplash, generate multiple sizes
     if (src.includes('unsplash.com')) {
+      // Check if URL already has query parameters
+      const separator = src.includes('?') ? '&' : '?';
       return `
-        ${src}&w=400 400w,
-        ${src}&w=800 800w,
-        ${src}&w=1200 1200w,
-        ${src}&w=1600 1600w
+        ${src}${separator}w=400 400w,
+        ${src}${separator}w=800 800w,
+        ${src}${separator}w=1200 1200w,
+        ${src}${separator}w=1600 1600w
       `.trim();
     }
     
@@ -154,7 +178,7 @@ export default function OptimizedImage({
     return undefined;
   };
 
-  const srcSet = generateSrcSet(src);
+  const srcSet = generateSrcSet(currentSrc);
 
   // Map common aspect ratios to Tailwind classes
   const aspectRatioClass = aspectRatio ? {
@@ -174,7 +198,7 @@ export default function OptimizedImage({
       <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
 
       {/* Missing src or Error State */}
-      {!src || hasError ? (
+      {!currentSrc || hasError ? (
         <div className="image-placeholder w-full h-full">
           <div className="text-center">
             <ImageOff className="h-12 w-12 text-muted-foreground/40 mx-auto mb-2" />
@@ -199,9 +223,9 @@ export default function OptimizedImage({
           )}
 
           {/* Actual Image */}
-          {isInView && (
+          {isInView && currentSrc && (
             <img
-              src={src}
+              src={currentSrc}
               alt={alt}
               srcSet={srcSet}
               sizes={sizes || '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw'}

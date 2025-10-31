@@ -189,30 +189,48 @@ export async function getProductById(id) {
 }
 
 /* ============================================================
- * 6️⃣ RELATED PRODUCTS
+ * 6️⃣ RELATED PRODUCTS (based on moodboard relationships)
+ * Returns all products from moodboards that contain this product
  * ============================================================ */
 export async function getRelatedProducts(base, limit, user) {
-  if (!base) return []
-  const tagList = Array.isArray(base.tags) ? base.tags.map(t => t.tag) : []
+  if (!base?.id) return []
 
-  return await safeExec('Related products', () =>
-    prisma.product.findMany({
+  return await safeExec('Related products from moodboards', async () => {
+    // Step 1: Find all moodboards that contain this product
+    const moodboardProducts = await prisma.moodboardProduct.findMany({
+      where: { productId: base.id },
+      select: { moodboardId: true }
+    })
+
+    const moodboardIds = moodboardProducts.map(mp => mp.moodboardId)
+    if (moodboardIds.length === 0) return []
+
+    // Step 2: Find all products in those moodboards (excluding the current product)
+    const relatedProductIds = await prisma.moodboardProduct.findMany({
       where: {
-        id: { not: base.id },
-        OR: [
-          tagList.length
-            ? { tags: { some: { tag: { in: tagList, mode: 'insensitive' } } } }
-            : undefined,
-          base.category ? { category: base.category } : undefined,
-          base.brand ? { brand: base.brand } : undefined
-        ].filter(Boolean),
+        moodboardId: { in: moodboardIds },
+        productId: { not: base.id }
+      },
+      select: { productId: true },
+      distinct: ['productId'] // Remove duplicates
+    })
+
+    const uniqueProductIds = relatedProductIds.map(r => r.productId)
+    if (uniqueProductIds.length === 0) return []
+
+    // Step 3: Fetch the products with tags
+    const products = await prisma.product.findMany({
+      where: {
+        id: { in: uniqueProductIds },
         ...(user ? {} : { isPublished: true })
       },
-      take: limit,
+      include: { tags: true },
       orderBy: { createdAt: 'desc' },
-      include: { tags: true }
+      take: limit || 20
     })
-  )
+
+    return products
+  })
 }
 
 /* ============================================================

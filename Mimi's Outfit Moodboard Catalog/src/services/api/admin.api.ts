@@ -38,7 +38,20 @@ export const authApi = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     if (apiConfig.mode === 'real') {
       // Real API call (backend mounts at /admin/auth/login)
-      return apiClient.post<AuthResponse>('/admin/auth/login', credentials);
+      // Backend returns: { id, email, name, role, token }
+      // Transform to: { token, user: { id, email, name, role, createdAt }, expiresIn }
+      const response = await apiClient.post<{ id: string; email: string; name: string; role: string; token: string }>('/admin/auth/login', credentials);
+      return {
+        token: response.token,
+        user: {
+          id: response.id,
+          email: response.email,
+          name: response.name,
+          role: response.role as 'admin' | 'editor',
+          createdAt: new Date().toISOString(), // Backend doesn't return createdAt, use current time
+        },
+        expiresIn: 3600, // 1 hour default
+      };
     }
     
     // Mock implementation

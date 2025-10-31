@@ -170,11 +170,29 @@ export const getBySlug = async (req, res) => {
   try {
     const product = await getProductBySlug(req.params.slug)
     if (!product) return res.status(404).json({ error: 'Product not found' })
-    sendJson(res, {
+    
+    const includeRelated = req.query.includeRelated === 'true'
+    let relatedProducts = []
+    
+    if (includeRelated) {
+      relatedProducts = await getRelatedProducts(product, 4, req.user)
+    }
+    
+    const response = {
       ...product,
       price: product.price ? Number(product.price) : null,
       tags: product.tags.map(t => t.tag)
-    })
+    }
+    
+    if (includeRelated && relatedProducts.length > 0) {
+      response.related = relatedProducts.map(p => ({
+        ...p,
+        price: p.price ? Number(p.price) : null,
+        tags: p.tags?.map(t => t.tag) || []
+      }))
+    }
+    
+    sendJson(res, response)
 
     if (CONFIG.ENABLE_EVENT_LOG && product?.id) {
       runAsyncDetached(() =>
