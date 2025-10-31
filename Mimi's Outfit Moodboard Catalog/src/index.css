@@ -1,0 +1,388 @@
+/**
+ * =====================================
+ *         THE LOOKBOOK BY MIMI
+ * =====================================
+ * 
+ * Project: Fashion Discovery Platform
+ * Type: E-commerce / Lifestyle
+ * 
+ * DESIGN PHILOSOPHY
+ * -----------------
+ * Core Principle: Elegant curation meets effortless discovery
+ * Design Style: Sophisticated Minimalism with warm editorial tones
+ * Emotion Goal: Inspiration, trust, and sophisticated simplicity
+ * 
+ * COLOR SYSTEM (HSL FORMAT)
+ * -------------
+ * Background: 36 43% 98% - Warm cream base (#fffaf7)
+ * Surface: 0 0% 100% - Pure white cards and overlays
+ * Primary: 28 27% 23% - Rich espresso brown (#4a3b2c)
+ * Accent: 36 32% 62% - Soft beige-gold (#c8a27a)
+ * Neutral Dark: 31 14% 11% - Deep charcoal (#1e1a17)
+ * Neutral Mid: 33 10% 54% - Warm gray (#8c837b)
+ * Neutral Light: 36 23% 94% - Light cream (#f3eee8)
+ * 
+ * Success: 160 63% 30% - Forest green (#1a7f5a)
+ * Danger: 0 66% 46% - Muted red (#b23a3a)
+ * Info: 199 44% 37% - Steel blue (#356f8a)
+ * 
+ * TYPOGRAPHY
+ * ----------
+ * Display: Playfair Display (serif headlines)
+ * Body: Inter (clean content reading)
+ * 
+ * INTERACTIONS
+ * ------------
+ * Transitions: 220ms cubic-bezier
+ * Hover: Subtle elevation and warmth
+ * Focus: Elegant outline system
+ * ====================================
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand Colors */
+    --background: 36 43% 98%;
+    --foreground: 31 14% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 31 14% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 31 14% 11%;
+    --primary: 28 27% 23%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 36 23% 94%;
+    --secondary-foreground: 31 14% 11%;
+    --muted: 36 23% 94%;
+    --muted-foreground: 33 10% 54%;
+    --accent: 36 32% 62%;
+    --accent-foreground: 31 14% 11%;
+    --destructive: 0 66% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 36 23% 94%;
+    --input: 36 23% 94%;
+    --ring: 28 27% 23%;
+    --radius: 1rem;
+
+    /* Custom tokens */
+    --color-success: 160 63% 30%;
+    --color-info: 199 44% 37%;
+    --color-neutral-900: 31 14% 11%;
+    --color-neutral-500: 33 10% 54%;
+    --color-neutral-100: 36 23% 94%;
+  }
+
+  .dark {
+    --background: 31 14% 11%;
+    --foreground: 36 43% 98%;
+    --card: 28 20% 16%;
+    --card-foreground: 36 43% 98%;
+    --popover: 28 20% 16%;
+    --popover-foreground: 36 43% 98%;
+    --primary: 36 43% 98%;
+    --primary-foreground: 31 14% 11%;
+    --secondary: 28 20% 20%;
+    --secondary-foreground: 36 43% 98%;
+    --muted: 28 20% 20%;
+    --muted-foreground: 33 10% 54%;
+    --accent: 36 32% 62%;
+    --accent-foreground: 31 14% 11%;
+    --destructive: 0 66% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 28 20% 20%;
+    --input: 28 20% 20%;
+    --ring: 36 32% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+    @apply font-medium;
+  }
+
+  /* Keyboard navigation focus states */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+
+  /* Remove default outline for mouse users */
+  *:focus:not(:focus-visible) {
+    @apply outline-none;
+  }
+
+  /* Ensure interactive elements are keyboard accessible */
+  a, button, [role="button"], [tabindex]:not([tabindex="-1"]) {
+    @apply transition-all duration-200;
+  }
+
+  a:focus-visible, button:focus-visible, [role="button"]:focus-visible {
+    @apply ring-2 ring-primary ring-offset-2;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Playfair Display', serif;
+  }
+  
+  .font-sans {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .transition-smooth {
+    transition: all 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  
+  .shadow-elegant {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+  
+  .shadow-elegant-hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  .text-success {
+    color: hsl(var(--color-success));
+  }
+  
+  .text-info {
+    color: hsl(var(--color-info));
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+}
+
+/* Component styles */
+.product-card {
+  @apply bg-card rounded-2xl overflow-hidden shadow-elegant transition-smooth;
+}
+
+.product-card:hover {
+  @apply shadow-elegant-hover -translate-y-1;
+}
+
+.section-padding {
+  @apply px-4 sm:px-6 lg:px-8 py-8 sm:py-12;
+}
+
+.container-custom {
+  @apply max-w-7xl mx-auto;
+}
+
+/* Image placeholder with gradient background */
+.image-placeholder {
+  @apply bg-gradient-to-br from-muted via-secondary to-muted/50 flex items-center justify-center;
+}
+
+/* Enhanced hover effects */
+.hover-lift {
+  @apply transition-all duration-300 hover:shadow-elegant-hover hover:-translate-y-1;
+}
+
+.hover-scale {
+  @apply transition-transform duration-500 hover:scale-105;
+}
+
+/* Glass morphism effect */
+.glass-effect {
+  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-lg;
+}
+
+/* Mobile-first responsive utilities */
+@layer utilities {
+  /* Mobile touch targets - minimum 44px */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Mobile-optimized text sizes */
+  .text-mobile-hero {
+    @apply text-3xl sm:text-4xl md:text-5xl lg:text-6xl;
+  }
+  
+  .text-mobile-title {
+    @apply text-2xl sm:text-3xl md:text-4xl;
+  }
+  
+  .text-mobile-subtitle {
+    @apply text-xl sm:text-2xl md:text-3xl;
+  }
+  
+  .text-mobile-body {
+    @apply text-base sm:text-lg;
+  }
+  
+  /* Mobile-optimized spacing */
+  .mobile-section {
+    @apply py-8 sm:py-12 md:py-16;
+  }
+  
+  .mobile-container {
+    @apply px-4 sm:px-6 md:px-8 lg:px-12;
+  }
+  
+  /* Grid systems for mobile */
+  .grid-mobile-1 {
+    @apply grid grid-cols-1;
+  }
+  
+  .grid-mobile-2 {
+    @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5;
+  }
+  
+  .grid-mobile-products {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+  
+  .grid-mobile-moodboards {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3;
+  }
+  
+  /* Mobile-friendly buttons */
+  .btn-mobile {
+    @apply px-6 py-3 text-base sm:px-8 sm:py-3.5 sm:text-lg touch-target;
+  }
+  
+  /* Mobile navigation */
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50;
+  }
+  
+  /* Responsive images with optimization */
+  .img-responsive {
+    @apply w-full h-auto object-cover;
+  }
+  
+  /* Image optimization utilities */
+  .img-optimized {
+    @apply w-full h-full object-cover;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  
+  /* Blur-up loading effect */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+  
+  .img-loading {
+    @apply bg-gradient-to-r from-muted via-muted/50 to-muted;
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+  }
+  
+  /* Progressive image enhancement */
+  .img-blur-placeholder {
+    filter: blur(20px);
+    transform: scale(1.1);
+    transition: filter 0.5s ease, transform 0.5s ease;
+  }
+  
+  .img-loaded {
+    filter: blur(0);
+    transform: scale(1);
+  }
+  
+  /* Prevent image jump during load */
+  .img-aspect-container {
+    @apply relative overflow-hidden;
+    aspect-ratio: var(--aspect-ratio, 1);
+  }
+  
+  /* Lazy load animation */
+  @keyframes fadeInImage {
+    from {
+      opacity: 0;
+      transform: scale(1.05);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .img-fade-in {
+    animation: fadeInImage 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  
+  /* Mobile-optimized cards */
+  .card-mobile {
+    @apply rounded-xl sm:rounded-2xl;
+  }
+  
+  /* Safe area padding for mobile notches */
+  .safe-area-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Mobile-specific scrolling improvements */
+@media (max-width: 640px) {
+  /* Smooth scrolling for mobile */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Optimize tap highlights */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Better focus states for mobile */
+  button:focus-visible,
+  a:focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
+  }
+}
+
+/* Ensure Select dropdowns appear above other content */
+[data-radix-select-content],
+[data-radix-popper-content-wrapper] {
+  z-index: 100 !important;
+}
+
+[data-radix-select-viewport] {
+  max-height: 300px;
+}
+
+/* Improve filter panel visibility */
+.filter-panel {
+  position: relative;
+  z-index: 10;
+}

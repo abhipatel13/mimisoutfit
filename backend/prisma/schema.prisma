@@ -1,0 +1,165 @@
+// --- Data Source ---
+datasource db {
+  provider = "postgresql"   // or "sqlite", "mysql", etc.
+  url      = env("DATABASE_URL")
+}
+
+
+// --- Generators ---
+generator client {
+  provider = "prisma-client-js"
+  //output   = "../generated/client"
+}
+
+// --- Enums ---
+enum Role {
+  admin
+  editor
+  viewer
+}
+
+enum PurchaseType {
+  affiliate
+  direct
+}
+
+
+// --- Product Models ---
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  price         Decimal? @db.Decimal(10, 2)
+  imageUrl      String   @map("image_url")
+  affiliateUrl  String   @map("affiliate_url")
+  blurhash      String?
+  brand         String?
+  category      String?
+  description   String?  @db.Text
+  isPublished  Boolean  @default(true) @map("is_published")
+  isFeatured    Boolean  @default(false) @map("is_featured")
+  purchaseType  PurchaseType @default(affiliate) @map("purchase_type")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tags       ProductTag[]
+  moodboards MoodboardProduct[]
+
+
+  @@index([category])
+  @@index([brand])
+  @@index([price])
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@index([createdAt])
+  @@map("products")
+}
+
+model ProductTag {
+  productId String  @map("product_id")
+  tag       String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tag])
+  @@index([tag])
+  @@map("product_tags")
+}
+
+// --- Moodboard Models ---
+model Moodboard {
+  id          String   @id @default(cuid())
+  title       String
+  slug          String   @unique
+  description String?  @db.Text
+  coverImage  String   @map("cover_image")
+  coverBlurhash String? @map("cover_blurhash")
+  isFeatured  Boolean  @default(false) @map("is_featured")
+  isPublished  Boolean  @default(true) @map("is_published")
+  howToWear   String?  @db.Text @map("how_to_wear")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tags        MoodboardTag[]
+  stylingTips MoodboardStylingTip[]
+  products    MoodboardProduct[]
+
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@index([createdAt])
+  @@map("moodboards")
+}
+
+model MoodboardTag {
+  moodboardId String   @map("moodboard_id")
+  tag         String
+
+  moodboard Moodboard @relation(fields: [moodboardId], references: [id], onDelete: Cascade)
+
+  @@id([moodboardId, tag])
+  @@index([tag])
+  @@map("moodboard_tags")
+}
+
+model MoodboardStylingTip {
+  id          Int       @id @default(autoincrement())
+  moodboardId String    @map("moodboard_id")
+  tip         String    @db.Text
+  sortOrder   Int       @default(0) @map("sort_order")
+
+  moodboard Moodboard @relation(fields: [moodboardId], references: [id], onDelete: Cascade)
+
+  @@index([moodboardId])
+  @@map("moodboard_styling_tips")
+}
+
+model MoodboardProduct {
+  moodboardId String  @map("moodboard_id")
+  productId   String  @map("product_id")
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  moodboard Moodboard @relation(fields: [moodboardId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([moodboardId, productId])
+  @@index([moodboardId])
+  @@index([productId])
+  @@map("moodboard_products")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String   @map("password_hash")
+  role         Role     @default(admin)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("admin_users")
+}
+
+
+model AnalyticsEvent {
+  id           Int       @id @default(autoincrement())
+  userId       String?
+  eventType    String
+  eventData    Json?
+  productId    String?   @db.VarChar(64)
+  moodboardId  String?   @db.VarChar(64)
+  sessionId    String?
+  ipAddress    String?   @db.VarChar(64)
+  userAgent    String?
+  referrer     String?
+  resourceType String?   // e.g., "product", "moodboard", "page"
+  resourceId   String?
+  resourceName String?
+  metadata     Json?
+  url          String?
+  createdAt    DateTime  @default(now())
+
+  @@index([eventType])
+  @@index([resourceType])
+  @@index([productId])
+  @@index([moodboardId])
+  @@index([createdAt])
+}

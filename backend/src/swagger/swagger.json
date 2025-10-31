@@ -1,0 +1,457 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Lookbook API",
+    "version": "1.0.0",
+    "description": "REST API for The Lookbook by Mimi — providing product, moodboard, and recommendation data. Includes both public and admin endpoints."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "prod_001" },
+          "name": { "type": "string", "example": "Classic Trench Coat" },
+          "brand": { "type": "string", "example": "Burberry" },
+          "category": { "type": "string", "example": "outerwear" },
+          "description": { "type": "string", "example": "Timeless beige trench coat for all seasons." },
+          "price": { "type": "number", "example": 450 },
+          "imageUrl": { "type": "string", "example": "https://cdn.lookbook.com/prod001.jpg" },
+          "affiliateUrl": { "type": "string", "example": "https://partner.com/prod001" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "rank": { "type": "number", "example": 0.45 }
+        }
+      },
+      "ProductRelated": {
+        "allOf": [{ "$ref": "#/components/schemas/Product" }],
+        "properties": {
+          "tagMatchCount": { "type": "integer", "example": 2 },
+          "ftsRank": { "type": "number", "example": 0.38 },
+          "hybridScore": { "type": "number", "example": 0.78 }
+        }
+      },
+      "Moodboard": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "mood_001" },
+          "title": { "type": "string", "example": "Parisian Chic" },
+          "description": { "type": "string", "example": "Effortlessly chic French-inspired looks." },
+          "coverImage": { "type": "string", "example": "https://cdn.lookbook.com/mood001.jpg" },
+          "isFeatured": { "type": "boolean", "example": true },
+          "howToWear": { "type": "string", "example": "Perfect for transitional weather." },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "example": 1 },
+          "limit": { "type": "integer", "example": 12 },
+          "total": { "type": "integer", "example": 125 },
+          "totalPages": { "type": "integer", "example": 11 },
+          "hasNextPage": { "type": "boolean", "example": true },
+          "hasPrevPage": { "type": "boolean", "example": false }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "example": "admin@lookbook.com" },
+          "password": { "type": "string", "example": "admin123" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "expiresIn": { "type": "integer" },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "email": { "type": "string" },
+              "name": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          }
+        }
+      },
+      "CreateProductDto": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "price": { "type": "number" },
+          "imageUrl": { "type": "string" },
+          "affiliateUrl": { "type": "string" },
+          "brand": { "type": "string" },
+          "category": { "type": "string" },
+          "description": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "isFeatured": { "type": "boolean" }
+        }
+      },
+      "CreateMoodboardDto": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "slug": { "type": "string" },
+          "description": { "type": "string" },
+          "coverImage": { "type": "string" },
+          "productIds": { "type": "array", "items": { "type": "string" } },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "isFeatured": { "type": "boolean" },
+          "stylingTips": { "type": "array", "items": { "type": "string" } },
+          "howToWear": { "type": "string" }
+        }
+      }
+    },
+    "parameters": {
+      "X-Event-Type": { "name": "x-event-type", "in": "header", "required": false, "schema": { "type": "string", "example": "product_view" }, "description": "Optional analytics event type." },
+      "X-User-Id": { "name": "x-user-id", "in": "header", "required": false, "schema": { "type": "string", "example": "user_abc123" }, "description": "Optional user identifier for analytics." },
+      "X-Product-Id": { "name": "x-product-id", "in": "header", "required": false, "schema": { "type": "string", "example": "prod_001" }, "description": "Optional product id for analytics." },
+      "X-Session-Id": { "name": "x-session-id", "in": "header", "required": false, "schema": { "type": "string", "example": "sess_123" }, "description": "Optional session id for analytics." }
+    }
+  },
+  "security": [{ "bearerAuth": [] }],
+  "tags": [
+    { "name": "Public - Products" },
+    { "name": "Public - Moodboards" },
+    { "name": "Auth" },
+    { "name": "Admin - Products" },
+    { "name": "Admin - Moodboards" },
+    { "name": "Admin - Utilities" },
+    { "name": "Admin - Analytics" }
+  ],
+  "paths": {
+    "/products": {
+      "get": {
+        "tags": ["Public - Products"],
+        "summary": "List or search products",
+        "description": "Unauthenticated users do not see unpublished products. Optionally send analytics headers to log views.",
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "brand", "in": "query", "schema": { "type": "string" } },
+          { "name": "tag", "in": "query", "schema": { "type": "string" } },
+          { "name": "minPrice", "in": "query", "schema": { "type": "number" } },
+          { "name": "maxPrice", "in": "query", "schema": { "type": "number" } },
+          { "name": "sortBy", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "$ref": "#/components/parameters/X-Event-Type" },
+          { "$ref": "#/components/parameters/X-User-Id" },
+          { "$ref": "#/components/parameters/X-Product-Id" },
+          { "$ref": "#/components/parameters/X-Session-Id" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful product list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                },
+                "examples": {
+                  "unauthenticated": { "summary": "Without Authorization", "value": { "data": [{ "id": "prod_001", "name": "Classic Trench Coat", "brand": "Burberry", "category": "outerwear", "description": "Timeless beige trench coat for all seasons.", "price": 298, "imageUrl": "https://images.unsplash.com/photo-1539533113208...", "affiliateUrl": "https://nordstrom.com/...", "tags": ["classic","timeless"], "rank": 0.74 }], "pagination": { "page": 1, "limit": 12, "total": 52, "totalPages": 5, "hasNextPage": true, "hasPrevPage": false } } },
+                  "authenticated": { "summary": "With Authorization", "value": { "data": [{ "id": "prod_unpub", "name": "Preview Coat (Unpublished)", "brand": "House Brand", "category": "outerwear", "description": "Internal preview.", "price": 199, "imageUrl": "https://cdn.example.com/preview.jpg", "affiliateUrl": "https://example.com/preview", "tags": ["preview"], "rank": 0.12 }], "pagination": { "page": 1, "limit": 12, "total": 53, "totalPages": 5, "hasNextPage": true, "hasPrevPage": false } } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/featured": {
+      "get": {
+        "tags": ["Public - Products"],
+        "summary": "Featured products",
+        "description": "Unauthenticated users do not see unpublished featured products.",
+        "parameters": [ { "name": "limit", "in": "query", "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "Featured items", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } } } } } } }
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "tags": ["Public - Products"],
+        "summary": "Get product by ID",
+        "description": "Unauthenticated users receive 404 for unpublished products.",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }, { "$ref": "#/components/parameters/X-Event-Type" }, { "$ref": "#/components/parameters/X-User-Id" }, { "$ref": "#/components/parameters/X-Product-Id" }, { "$ref": "#/components/parameters/X-Session-Id" } ],
+        "responses": {
+          "200": { "description": "Product found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } },
+          "404": { "description": "Product not found or unpublished (unauthenticated)" }
+        }
+      }
+    },
+    "/products/slug/{slug}": {
+      "get": {
+        "tags": ["Public - Products"],
+        "summary": "Get product by slug",
+        "description": "Unauthenticated users receive 404 for unpublished products.",
+        "parameters": [ { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }, { "$ref": "#/components/parameters/X-Event-Type" }, { "$ref": "#/components/parameters/X-User-Id" }, { "$ref": "#/components/parameters/X-Product-Id" }, { "$ref": "#/components/parameters/X-Session-Id" } ],
+        "responses": {
+          "200": { "description": "Product found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Product" } } } },
+          "404": { "description": "Product not found or unpublished (unauthenticated)" }
+        }
+      }
+    },
+    "/products/{id}/related": {
+      "get": {
+        "tags": ["Public - Products"],
+        "summary": "Get related products",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }, { "name": "limit", "in": "query", "schema": { "type": "integer", "example": 4 } } ],
+        "responses": { "200": { "description": "Related items", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } } } } } }, "404": { "description": "Base product not found or unpublished (unauthenticated)" } }
+      }
+    },
+    "/moodboards": {
+      "get": {
+        "tags": ["Public - Moodboards"],
+        "summary": "List or search moodboards",
+        "description": "Unauthenticated users do not see unpublished moodboards.",
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "tag", "in": "query", "schema": { "type": "string" } },
+          { "name": "featured", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Moodboard list with pagination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Moodboard" } },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/moodboards/featured": {
+      "get": {
+        "tags": ["Public - Moodboards"],
+        "summary": "Featured moodboards",
+        "description": "Unauthenticated users do not see unpublished moodboards.",
+        "parameters": [ { "name": "limit", "in": "query", "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "Featured moodboards", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Moodboard" } } } } } } } }
+      }
+    },
+    "/moodboards/slug/{slug}": {
+      "get": {
+        "tags": ["Public - Moodboards"],
+        "summary": "Get moodboard by slug",
+        "description": "Unauthenticated users receive 404 for unpublished moodboards.",
+        "parameters": [ { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": {
+          "200": { "description": "Moodboard found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Moodboard" } } } },
+          "404": { "description": "Moodboard not found or unpublished (unauthenticated)" }
+        }
+      }
+    },
+    "/moodboards/{id}": {
+      "get": {
+        "tags": ["Public - Moodboards"],
+        "summary": "Get moodboard by ID",
+        "description": "Unauthenticated users receive 404 for unpublished moodboards.",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "Moodboard found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Moodboard" } } } }, "404": { "description": "Moodboard not found or unpublished (unauthenticated)" } }
+      }
+    },
+    "/moodboards/{id}/related": {
+      "get": {
+        "tags": ["Public - Moodboards"],
+        "summary": "Get related products for a moodboard",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Related product list",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ProductRelated" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Admin login",
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } } },
+        "responses": { "200": { "description": "Authenticated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" }, "examples": { "demo": { "value": { "token": "eyJhbGciOiJIUzI1NiIs...", "expiresIn": 3600, "user": { "id": "admin-001", "email": "admin@lookbook.com", "name": "Mimi Admin", "role": "admin" } } } } } } }, "401": { "description": "Invalid credentials" } }
+      }
+    },
+    "/admin/products": {
+      "post": {
+        "tags": ["Admin - Products"],
+        "summary": "Create product",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateProductDto" } } } },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/admin/moodboards": {
+      "post": {
+        "tags": ["Admin - Moodboards"],
+        "summary": "Create moodboard",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateMoodboardDto" } } } },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/admin/stats": {
+      "get": {
+        "tags": ["Admin - Utilities"],
+        "summary": "Get admin dashboard stats",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Stats summary" } }
+      }
+    },
+    "/admin/upload/image": {
+      "post": {
+        "tags": ["Admin - Utilities"],
+        "summary": "Upload an image",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": { "file": { "type": "string", "format": "binary" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Image uploaded" } }
+      }
+    },
+    "/admin/analytics/overview": {
+      "get": {
+        "tags": ["Admin - Analytics"],
+        "summary": "Analytics overview",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [ { "name": "timeRange", "in": "query", "schema": { "type": "string", "example": "30d" } } ],
+        "responses": {
+          "200": { "description": "Overview metrics",
+            "content": { "application/json": { "example": { "totalVisitors": 1243, "totalPageViews": 3876, "totalProductViews": 2145, "totalSearches": 432, "totalFavorites": 234, "totalAffiliateClicks": 156, "avgSessionDuration": 240, "bounceRate": 42.5, "timeRange": "30d" } } } }
+        }
+      }
+    },
+    "/admin/analytics/users": {
+      "get": {
+        "tags": ["Admin - Analytics"],
+        "summary": "User behavior",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [ { "name": "timeRange", "in": "query", "schema": { "type": "string", "example": "30d" } } ],
+        "responses": {
+          "200": { "description": "User behavior metrics",
+            "content": { "application/json": { "example": { "newUsers": 234, "returningUsers": 1009, "avgPagesPerSession": 4.2, "avgSessionDuration": 240, "trafficSources": [ { "source": "google.com", "visitors": 543, "percentage": 43.7 } ], "timeRange": "30d" } } } }
+        }
+      }
+    },
+    "/admin/analytics/products": {
+      "get": {
+        "tags": ["Admin - Analytics"],
+        "summary": "Product analytics (aggregate)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [ { "name": "timeRange", "in": "query", "schema": { "type": "string", "example": "30d" } }, { "name": "limit", "in": "query", "schema": { "type": "integer", "example": 10 } } ],
+        "responses": { "200": { "description": "Top products and searches", "content": { "application/json": { "example": { "topProducts": [ { "id": "prod_001", "name": "Classic Trench Coat", "views": 342, "favorites": 45, "clicks": 78, "conversionRate": 22.8 } ], "topSearches": [ { "term": "dresses", "count": 87, "uniqueSearchers": 76 } ], "timeRange": "30d" } } } } }
+      }
+    },
+    "/admin/analytics/products/{productId}": {
+      "get": {
+        "tags": ["Admin - Analytics"],
+        "summary": "Product analytics (by ID)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [ { "name": "productId", "in": "path", "required": true, "schema": { "type": "string" } }, { "name": "timeRange", "in": "query", "schema": { "type": "string", "example": "30d" } } ],
+        "responses": { "200": { "description": "Detailed product analytics", "content": { "application/json": { "example": { "productId": "prod_001", "metrics": { "views": 342, "uniqueViewers": 298, "favorites": 45, "clicks": 78, "conversionRate": 22.8 }, "viewsByDay": [ { "date": "2025-01-09", "count": 48 } ], "clicksByDay": [ { "date": "2025-01-09", "count": 11 } ], "viewerLocations": [ { "country": "United States", "count": 145, "percentage": 48.7 } ], "timeRange": "30d" } } } } }
+      }
+    },
+    "/admin/analytics/moodboards": {
+      "get": {
+        "tags": ["Admin - Analytics"],
+        "summary": "Moodboard analytics",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [ { "name": "timeRange", "in": "query", "schema": { "type": "string", "example": "30d" } }, { "name": "limit", "in": "query", "schema": { "type": "integer", "example": 10 } } ],
+        "responses": { "200": { "description": "Top moodboards", "content": { "application/json": { "example": { "topMoodboards": [ { "id": "mood_001", "title": "Parisian Chic", "views": 456, "clickThroughRate": 34.2 } ], "timeRange": "30d" } } } } }
+      }
+    },
+    "/admin/analytics/recent-activity": {
+      "get": {
+        "tags": ["Admin - Analytics"],
+        "summary": "Recent analytics events",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Recent events", "content": { "application/json": { "example": { "events": [ { "id": 1, "type": "product_view", "userId": "user_abc123", "productId": "prod_001", "moodboardId": null, "eventData": {}, "timestamp": "2025-01-15T19:58:00Z" } ] } } } } }
+      }
+    },
+    "/admin/analytics/timeseries": {
+      "get": {
+        "tags": ["Admin - Analytics"],
+        "summary": "Time series (multi-metric)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [ { "name": "timeRange", "in": "query", "schema": { "type": "string", "example": "30d" } } ],
+        "responses": { "200": { "description": "Daily metrics", "content": { "application/json": { "example": { "timeRange": "30d", "data": [ { "date": "2025-01-09", "views": 127, "clicks": 34, "searches": 18, "favorites": 12, "visitors": 89 } ] } } } } }
+      }
+    },
+    "/admin/analytics/categories": {
+      "get": {
+        "tags": ["Admin - Analytics"],
+        "summary": "Category distribution (clicks)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [ { "name": "timeRange", "in": "query", "schema": { "type": "string", "example": "30d" } } ],
+        "responses": { "200": { "description": "Distribution by category", "content": { "application/json": { "example": { "timeRange": "30d", "data": [ { "category": "Dresses", "count": 342, "percentage": 28.5 } ] } } } } }
+      }
+    },
+    "/admin/analytics/funnel": {
+      "get": {
+        "tags": ["Admin - Analytics"],
+        "summary": "Conversion funnel",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [ { "name": "timeRange", "in": "query", "schema": { "type": "string", "example": "30d" } } ],
+        "responses": { "200": { "description": "Funnel stages", "content": { "application/json": { "example": [ { "stage": "Visitors", "count": 1243, "conversionRate": 100, "dropOffRate": 0 }, { "stage": "Product Views", "count": 876, "conversionRate": 70.5, "dropOffRate": 29.5 } ] } } } }
+      }
+    },
+    "/admin/analytics/trends": {
+      "get": {
+        "tags": ["Admin - Analytics"],
+        "summary": "Period-over-period trends",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [ { "name": "timeRange", "in": "query", "schema": { "type": "string", "example": "30d" } } ],
+        "responses": { "200": { "description": "Trends per metric", "content": { "application/json": { "example": [ { "metric": "Views", "current": 1243, "previous": 1089, "change": 154, "changePercentage": 14.1, "trend": "up" } ] } } } }
+      }
+    },
+    "/api/analytics/track": {
+      "post": {
+        "tags": ["Admin - Analytics"],
+        "summary": "Public analytics ingestion (batch or single)",
+        "requestBody": { "content": { "application/json": { "examples": { "single": { "value": { "userId": "user_abc123", "eventType": "product_view", "productId": "prod_001", "url": "/products/prod_001" } }, "batch": { "value": [ { "userId": "user_abc123", "eventType": "page_view", "url": "/" }, { "userId": "user_abc123", "eventType": "product_view", "productId": "prod_001" } ] } } } } },
+        "responses": { "200": { "description": "Stored", "content": { "application/json": { "example": { "success": true, "inserted": 2 } } } }, "429": { "description": "Rate limited" } }
+      }
+    }
+  }
+}

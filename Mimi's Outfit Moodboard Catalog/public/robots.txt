@@ -1,0 +1,9 @@
+# robots.txt for The Lookbook by Mimi
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://thelookbookbymimi.com/sitemap.xml
+
+# Disallow admin or redirect pages
+Disallow: /go/
