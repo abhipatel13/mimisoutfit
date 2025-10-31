@@ -79,7 +79,7 @@ export function CategoryPieChart({
               fill="#8884d8"
               dataKey="count"
             >
-              {data.map((_, index) => (
+              {(data || []).map((_, index) => (
                 <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
               ))}
             </Pie>

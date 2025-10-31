@@ -55,20 +55,23 @@ export const getFeaturedMoodboards = async (req, res) => {
   try {
     console.log('📸 Fetching featured moodboards...')
 
-    const moodboards = await prisma.moodboard.findMany({
-      where: { isFeatured: true, isPublished: true },
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      include: { tags: true } // ✅ no products included
-    })
-
-    const data = moodboards.map(normalizeMoodboard)
-
+    const data = await fetchFeaturedMoodboards()
     res.json({ data }) // ✅ wrapped in "data" for consistency
   } catch (err) {
     console.error('❌ Featured moodboards error:', err)
     res.status(500).json({ error: 'Failed to fetch featured moodboards' })
   }
+}
+
+// Helper used by other controllers (no res object)
+export const fetchFeaturedMoodboards = async (limit = 5) => {
+  const moodboards = await prisma.moodboard.findMany({
+    where: { isFeatured: true, isPublished: true },
+    take: limit,
+    orderBy: { createdAt: 'desc' },
+    include: { tags: true }
+  })
+  return moodboards.map(normalizeMoodboard)
 }
 
 
@@ -193,3 +196,76 @@ export const getProductsForMoodboard = async (req, res) => {
   }
 }
 
+
+/**
+ * GET /moodboards/:id/related
+ * Returns related products for a moodboard based on overlapping tags,
+ * excluding products already in the moodboard.
+ */
+export const getRelatedProductsForMoodboard = async (req, res) => {
+  try {
+    const { id } = req.params
+    const limit = Math.min(Number(req.query.limit) || 10, 50)
+
+    // Ensure moodboard exists and load tags + existing products
+    const moodboard = await prisma.moodboard.findUnique({
+      where: { id },
+      include: {
+        tags: true,
+        products: { include: { product: true } }
+      }
+    })
+
+    if (!moodboard) {
+      return res.status(404).json({ error: 'Moodboard not found' })
+    }
+
+    const moodboardTags = moodboard.tags?.map(t => t.tag) || []
+    const existingProductIds = new Set(
+      (moodboard.products || []).map(mp => mp.productId)
+    )
+
+    if (moodboardTags.length === 0) {
+      return res.json([])
+    }
+
+    // Find products that share tags with the moodboard and are not already included
+    const related = await prisma.product.findMany({
+      where: {
+        id: { notIn: Array.from(existingProductIds) },
+        isPublished: true,
+        tags: { some: { tag: { in: moodboardTags, mode: 'insensitive' } } }
+      },
+      take: limit,
+      include: { tags: true }
+    })
+
+    // Score by tag overlap and provide a lightweight shape similar to docs
+    const scored = related
+      .map(p => {
+        const productTags = p.tags?.map(t => t.tag) || []
+        const overlap = productTags.filter(t => moodboardTags.includes(t))
+        const tagMatchCount = overlap.length
+        const tagOverlapRatio = moodboardTags.length
+          ? tagMatchCount / moodboardTags.length
+          : 0
+        const rank = tagOverlapRatio // simple rank proxy
+        const ftsRank = 0 // placeholder; no FTS in this endpoint
+        const hybridScore = Math.min(1, rank * 0.8 + ftsRank * 0.2)
+        return {
+          ...p,
+          tags: productTags,
+          rank,
+          tagMatchCount,
+          ftsRank,
+          hybridScore
+        }
+      })
+      .sort((a, b) => b.hybridScore - a.hybridScore)
+
+    res.json(scored)
+  } catch (err) {
+    console.error('❌ Related products for moodboard error:', err)
+    res.status(500).json({ error: 'Failed to fetch related products' })
+  }
+}

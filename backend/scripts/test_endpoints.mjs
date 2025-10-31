@@ -51,43 +51,6 @@ async function login() {
 function hasKeys(obj, keys) { return keys.every(k => k in obj) }
 
 async function testPublicMoodboards(token) {
-  // List
-  {
-    const { ok, json } = await http('/moodboards')
-    assert(ok && Array.isArray(json?.data), 'Public | moodboards list', { count: json?.data?.length })
-  }
-
-  // Featured
-  {
-    const { ok, json } = await http('/moodboards/featured')
-    assert(ok && Array.isArray(json?.data), 'Public | moodboards featured', { count: json?.data?.length })
-  }
-
-  // By slug
-  {
-    const { ok, json } = await http('/moodboards/slug/parisian-chic')
-    const mood = json?.data
-    assert(ok && mood?.id === 'mood_001', 'Public | moodboard by slug', { id: mood?.id })
-    const prod = mood?.products?.[0] || {}
-    assert('purchaseType' in prod && 'blurhash' in prod, 'Public | moodboard nested product normalized', { prod })
-  }
-
-  // By id
-  {
-    const { ok, json } = await http('/moodboards/mood_001')
-    const mood = json?.data
-    assert(ok && mood?.slug === 'parisian-chic', 'Public | moodboard by id', { slug: mood?.slug })
-  }
-
-  // Related
-  {
-    const { ok, json } = await http('/moodboards/mood_001/related')
-    assert(ok && Array.isArray(json?.related), 'Public | moodboard related products', { count: json?.related?.length })
-  }
-}
-
-
-async function testPublicMoodboards(token) {
   const logError = (label, res) => {
     console.error(`❌ ${label} failed:`)
     console.error(`  ↳ URL: ${res.url}`)
@@ -142,15 +105,98 @@ async function testPublicMoodboards(token) {
     assert(ok && json?.slug === 'parisian-chic', 'Public | moodboard by id', { slug: json?.slug })
   }
 
-  // --- Related ---
+  // --- Products for moodboard (no /related route in API) ---
   {
-    const res = await safeHttp('/moodboards/mood_001/related')
+    const res = await safeHttp('/moodboards/mood_001/products')
     const { ok, json } = res
-    if (!ok || !Array.isArray(json?.related)) logError('Public | moodboard related products', res)
-    assert(ok && Array.isArray(json?.related), 'Public | moodboard related products', { count: json?.related?.length })
+    if (!ok || !Array.isArray(json)) logError('Public | moodboard products', res)
+    assert(ok && Array.isArray(json), 'Public | moodboard products', { count: json?.length })
   }
 }
 
+
+async function testPublicProducts(token) {
+  const logError = (label, res) => {
+    console.error(`❌ ${label} failed:`)
+    console.error(`  ↳ Status: ${res.status}`)
+    console.error(`  ↳ ok: ${res.ok}`)
+    console.error(`  ↳ Response JSON:`, JSON.stringify(res.json, null, 2))
+  }
+
+  const safeHttp = async (path) => {
+    try {
+      const res = await http(path)
+      return res
+    } catch (err) {
+      console.error(`🚨 Network/HTTP error on ${path}:`, err)
+      throw err
+    }
+  }
+
+  // --- List ---
+  {
+    const res = await safeHttp('/products')
+    const { ok, json } = res
+    if (!ok || !Array.isArray(json?.data)) logError('Public | products list', res)
+    assert(ok && Array.isArray(json?.data), 'Public | products list', { count: json?.data?.length })
+  }
+
+  // --- Featured ---
+  {
+    const res = await safeHttp('/products/featured')
+    const { ok, json } = res
+    if (!ok || !Array.isArray(json?.data)) logError('Public | products featured', res)
+    assert(ok && Array.isArray(json?.data), 'Public | products featured', { count: json?.data?.length })
+  }
+
+  // --- Brands ---
+  {
+    const res = await safeHttp('/products/brands')
+    const { ok, json } = res
+    if (!ok || !Array.isArray(json)) logError('Public | products brands', res)
+    assert(ok && Array.isArray(json), 'Public | products brands', { count: json?.length })
+  }
+
+  // --- Categories ---
+  {
+    const res = await safeHttp('/products/categories')
+    const { ok, json } = res
+    if (!ok || !Array.isArray(json)) logError('Public | products categories', res)
+    assert(ok && Array.isArray(json), 'Public | products categories', { count: json?.length })
+  }
+
+  // --- Tags ---
+  {
+    const res = await safeHttp('/products/tags')
+    const { ok, json } = res
+    if (!ok || !Array.isArray(json)) logError('Public | products tags', res)
+    assert(ok && Array.isArray(json), 'Public | products tags', { count: json?.length })
+  }
+
+  // --- By slug ---
+  {
+    const res = await safeHttp('/products/slug/classic-trench-coat')
+    const { ok, json } = res
+    if (!ok || json?.id !== 'prod_001') logError('Public | product by slug', res)
+    assert(ok && json?.id === 'prod_001', 'Public | product by slug', { id: json?.id })
+  }
+
+  // --- By ID ---
+  {
+    const res = await safeHttp('/products/prod_001')
+    const { ok, json } = res
+    if (!ok || json?.slug !== 'classic-trench-coat') logError('Public | product by id', res)
+    assert(ok && json?.slug === 'classic-trench-coat', 'Public | product by id', { slug: json?.slug })
+  }
+
+  // --- Related ---
+  {
+    const res = await safeHttp('/products/prod_001/related')
+    const { ok, json } = res
+    if (!ok || !Array.isArray(json?.data)) logError('Public | product related', res)
+    assert(ok && Array.isArray(json?.data), 'Public | product related', { count: json?.data?.length })
+  }
+}
 
 async function testAnalytics(token) {
   if (!token) {
@@ -189,22 +235,22 @@ async function testAnalytics(token) {
   }
   // Timeseries
   {
-    const { ok, json } = await http('/admin/analytics/timeseries?timeRange=7d', { token })
+    const { ok, json } = await http('/api/analytics/timeseries?timeRange=7d', { token })
     assert(ok && Array.isArray(json?.data), 'Admin | analytics timeseries', {})
   }
   // Categories
   {
-    const { ok, json } = await http('/admin/analytics/categories?timeRange=7d', { token })
+    const { ok, json } = await http('/api/analytics/categories?timeRange=7d', { token })
     assert(ok && Array.isArray(json?.data), 'Admin | analytics categories', {})
   }
   // Funnel
   {
-    const { ok, json } = await http('/admin/analytics/funnel?timeRange=7d', { token })
+    const { ok, json } = await http('/api/analytics/funnel?timeRange=7d', { token })
     assert(ok && Array.isArray(json), 'Admin | analytics funnel', {})
   }
   // Trends
   {
-    const { ok, json } = await http('/admin/analytics/trends?timeRange=7d', { token })
+    const { ok, json } = await http('/api/analytics/trends?timeRange=7d', { token })
     assert(ok && Array.isArray(json), 'Admin | analytics trends', {})
   }
   // Track (public ingestion)
@@ -218,9 +264,9 @@ async function testAnalytics(token) {
 async function main() {
   console.log(`Testing against ${BASE}`)
   const token = await login()
-  // await testPublicProducts(token)
+  await testPublicProducts(token)
   await testPublicMoodboards(token)
-  // await testAnalytics(token)
+  await testAnalytics(token)
 
   const passed = results.filter(r => r.ok).length
   const failed = results.length - passed
