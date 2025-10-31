@@ -80,12 +80,12 @@ export function RecentActivityFeed({ events, loading }: RecentActivityFeedProps)
       </CardHeader>
       <CardContent>
         <div className="space-y-3 sm:space-y-4">
-          {events.length === 0 ? (
+          {(events || []).length === 0 ? (
             <p className="text-xs sm:text-sm text-muted-foreground text-center py-6 sm:py-8">
               No recent activity
             </p>
           ) : (
-            events.map(event => (
+            (events || []).map(event => (
               <div key={event.id} className="flex items-start gap-2 sm:gap-3">
                 <div className="mt-0.5 sm:mt-1 p-1.5 sm:p-2 rounded-full bg-muted flex-shrink-0">
                   {getEventIcon(event.eventType)}

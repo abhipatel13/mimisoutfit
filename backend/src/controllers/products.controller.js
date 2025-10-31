@@ -11,7 +11,7 @@ import {
 } from '../services/productService.js'
 import { logEventSafe } from '../lib/safeAnalytics.js'
 import { CONFIG } from '../lib/config.js'
-import { getFeaturedMoodboards } from '../controllers/moodboards.controller.js'
+import { fetchFeaturedMoodboards } from '../controllers/moodboards.controller.js'
 
 // -------------------------------------------
 // Helpers
@@ -81,9 +81,12 @@ export const listProducts = async (req, res) => {
       total = result.total
     }
 
+    // Normalize price to number for all products
+    const normalized = data.map(p => ({ ...p, price: p.price ? Number(p.price) : null }))
+
     // ✅ consistent numeric pagination
     sendJson(res, {
-      data,
+      data: normalized,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -100,10 +103,19 @@ export const listProducts = async (req, res) => {
 
 export const getHomeFeatured = async (req, res) => {
   try {
-    const moodboards = await getFeaturedMoodboards(3)
-    const products = await getFeaturedProducts(5)
+    const [moodboards, products] = await Promise.all([
+      fetchFeaturedMoodboards(3),
+      getFeaturedProducts(5)
+    ])
 
-    sendJson(res, { moodboards, products })
+    // Normalize products like in getFeatured
+    const normalizedProducts = (products || []).map(({ createdAt, updatedAt, ...p }) => ({
+      ...p,
+      price: p.price ? Number(p.price) : null,
+      tags: p.tags?.map(t => t.tag) || []
+    }))
+
+    sendJson(res, { moodboards, products: normalizedProducts })
   } catch (err) {
     handleError(res, 'Home featured products error', err)
   }
@@ -116,6 +128,7 @@ export const getFeatured = async (req, res) => {
 
     const data = (products || []).map(({ createdAt, updatedAt, ...p }) => ({
       ...p,
+      price: p.price ? Number(p.price) : null,
       tags: p.tags?.map(t => t.tag) || [] // assuming each tag object has a "tag" field
     }))
 
@@ -157,7 +170,11 @@ export const getBySlug = async (req, res) => {
   try {
     const product = await getProductBySlug(req.params.slug)
     if (!product) return res.status(404).json({ error: 'Product not found' })
-    sendJson(res, { ...product, tags: product.tags.map(t => t.tag) })
+    sendJson(res, {
+      ...product,
+      price: product.price ? Number(product.price) : null,
+      tags: product.tags.map(t => t.tag)
+    })
 
     if (CONFIG.ENABLE_EVENT_LOG && product?.id) {
       runAsyncDetached(() =>
@@ -179,7 +196,11 @@ export const getById = async (req, res) => {
   try {
     const product = await getProductById(req.params.id)
     if (!product) return res.status(404).json({ error: 'Product not found' })
-    sendJson(res, { ...product, tags: product.tags.map(t => t.tag) })
+    sendJson(res, {
+      ...product,
+      price: product.price ? Number(product.price) : null,
+      tags: product.tags.map(t => t.tag)
+    })
 
     if (CONFIG.ENABLE_EVENT_LOG && product?.id) {
       runAsyncDetached(() =>
@@ -201,7 +222,12 @@ export const getRelated = async (req, res) => {
   try {
     const base = await getProductById(req.params.id)
     if (!base) return res.status(404).json({ error: 'Product not found' })
-    const data = await getRelatedProducts(base, 4, req.user)
+    const related = await getRelatedProducts(base, 4, req.user)
+    const data = (related || []).map(({ createdAt, updatedAt, ...p }) => ({
+      ...p,
+      price: p.price ? Number(p.price) : null,
+      tags: p.tags?.map(t => t.tag) || []
+    }))
     sendJson(res, { data })
   } catch (err) {
     handleError(res, 'Related products error', err)

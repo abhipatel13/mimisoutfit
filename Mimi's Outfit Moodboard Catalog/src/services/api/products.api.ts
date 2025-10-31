@@ -3,7 +3,7 @@
  * Handles product data fetching with mock/real mode support
  */
 
-import type { Product, FilterOptions, PaginatedResponse, ProductDetailResponse, HomepageData } from '@/types';
+import type { Product, FilterOptions, PaginatedResponse, ProductDetailResponse, HomepageData, Moodboard } from '@/types';
 import { apiConfig } from '@/config/api.config';
 import { apiClient } from './base.api';
 import { calculatePagination, DEFAULT_PAGE_SIZE } from '@/lib/pagination.utils';
@@ -230,10 +230,19 @@ const realApi = {
 
   async getProductBySlug(slug: string, includeRelated?: boolean): Promise<ProductDetailResponse | null> {
     try {
-      const params = includeRelated ? { includeRelated: 'true' } : {};
-      return await apiClient.get<ProductDetailResponse>(`/products/slug/${slug}`, { params });
+      // Backend returns the product object directly, not wrapped
+      const product = await apiClient.get<Product>(`/products/slug/${slug}`);
+      if (!includeRelated) return { product };
+
+      let relatedProducts: Product[] = [];
+      try {
+        relatedProducts = await this.getRelatedProducts(product.id, 4);
+      } catch {
+        relatedProducts = [];
+      }
+      return { product, relatedProducts };
     } catch (error) {
-      if (error instanceof Error && 'status' in error && error.status === 404) {
+      if (error instanceof Error && 'status' in error && (error as any).status === 404) {
         return null;
       }
       throw error;
@@ -281,7 +290,11 @@ const realApi = {
   },
 
   async getHomepageData(): Promise<HomepageData> {
-    return apiClient.get<HomepageData>('/homepage');
+    const res = await apiClient.get<{ moodboards: Moodboard[]; products: Product[] }>('/products/homeFeatured');
+    return {
+      featuredProducts: res.products || [],
+      featuredMoodboards: res.moodboards || [],
+    };
   },
 };
 

@@ -89,7 +89,7 @@ export function CategoryBarChart({
             />
             <Legend wrapperStyle={{ fontSize: '12px' }} />
             <Bar dataKey="count" name="Views" radius={[8, 8, 0, 0]}>
-              {data.map((_, index) => (
+              {(data || []).map((_, index) => (
                 <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
               ))}
             </Bar>

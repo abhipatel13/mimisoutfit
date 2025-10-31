@@ -34,7 +34,9 @@ export function ConversionFunnelChart({
     );
   }
 
-  if (data.length === 0) {
+  const funnel = Array.isArray(data) ? data : [];
+
+  if (funnel.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -50,7 +52,7 @@ export function ConversionFunnelChart({
     );
   }
 
-  const maxCount = Math.max(...data.map((d) => d.count));
+  const maxCount = Math.max(...funnel.map((d) => d.count));
 
   return (
     <Card>
@@ -60,9 +62,9 @@ export function ConversionFunnelChart({
       </CardHeader>
       <CardContent>
         <div className="space-y-3 sm:space-y-4">
-          {data.map((stage, index) => {
+          {funnel.map((stage, index) => {
             const widthPercentage = (stage.count / maxCount) * 100;
-            const isLast = index === data.length - 1;
+            const isLast = index === funnel.length - 1;
 
             return (
               <div key={stage.stage} className="relative">
@@ -113,18 +115,18 @@ export function ConversionFunnelChart({
         <div className="mt-4 sm:mt-6 grid grid-cols-3 gap-2 sm:gap-4 pt-4 sm:pt-6 border-t">
           <div className="text-center">
             <p className="text-[10px] sm:text-sm text-muted-foreground mb-1">Total Entered</p>
-            <p className="text-lg sm:text-2xl font-bold">{data[0]?.count.toLocaleString()}</p>
+            <p className="text-lg sm:text-2xl font-bold">{funnel[0]?.count?.toLocaleString?.()}</p>
           </div>
           <div className="text-center">
             <p className="text-[10px] sm:text-sm text-muted-foreground mb-1">Completed</p>
             <p className="text-lg sm:text-2xl font-bold">
-              {data[data.length - 1]?.count.toLocaleString()}
+              {funnel[funnel.length - 1]?.count?.toLocaleString?.()}
             </p>
           </div>
           <div className="text-center">
             <p className="text-[10px] sm:text-sm text-muted-foreground mb-1">Overall Rate</p>
             <p className="text-lg sm:text-2xl font-bold text-green-600">
-              {data[data.length - 1]?.conversionRate.toFixed(1)}%
+              {funnel[funnel.length - 1]?.conversionRate?.toFixed?.(1)}%
             </p>
           </div>
         </div>

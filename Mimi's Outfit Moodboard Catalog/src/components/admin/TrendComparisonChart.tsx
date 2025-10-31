@@ -44,7 +44,8 @@ export function TrendComparisonChart({
     );
   }
 
-  const chartData = data.map((item) => ({
+  const trendData = Array.isArray(data) ? data : [];
+  const chartData = trendData.map((item) => ({
     name: item.metric,
     Current: item.current,
     Previous: item.previous,
@@ -79,7 +80,7 @@ export function TrendComparisonChart({
 
         {/* Trend Details */}
         <div className="mt-4 sm:mt-6 space-y-2 sm:space-y-3">
-          {data.map((item) => {
+          {trendData.map((item) => {
             const TrendIcon =
               item.trend === 'up'
                 ? TrendingUp

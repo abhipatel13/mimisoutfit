@@ -6,15 +6,11 @@ import SkeletonCard from '@/components/SkeletonCard';
 import SkeletonMoodboard from '@/components/SkeletonMoodboard';
 import SectionHeader from '@/components/SectionHeader';
 import OptimizedImage from '@/components/OptimizedImage';
-import { useFeaturedProducts } from '@/hooks/use-products';
-import { useFeaturedMoodboards } from '@/hooks/use-moodboards';
+import { useHomeFeatured } from '@/hooks/use-home';
 
 export default function HomePage() {
-  // Use live API hooks for featured data
-  const { products: featuredProducts, loading: productsLoading } = useFeaturedProducts();
-  const { moodboards: featuredMoodboards, loading: moodboardsLoading } = useFeaturedMoodboards();
-  
-  const isLoading = productsLoading || moodboardsLoading;
+  // Unified featured data
+  const { featuredProducts, featuredMoodboards, loading: isLoading } = useHomeFeatured();
 
   return (
     <div className="min-h-screen">

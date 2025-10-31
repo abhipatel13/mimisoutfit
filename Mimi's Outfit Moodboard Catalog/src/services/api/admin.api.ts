@@ -37,8 +37,8 @@ const getAuthHeaders = (): Record<string, string> => {
 export const authApi = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     if (apiConfig.mode === 'real') {
-      // Real API call
-      return apiClient.post<AuthResponse>('/auth/login', credentials);
+      // Real API call (backend mounts at /admin/auth/login)
+      return apiClient.post<AuthResponse>('/admin/auth/login', credentials);
     }
     
     // Mock implementation
