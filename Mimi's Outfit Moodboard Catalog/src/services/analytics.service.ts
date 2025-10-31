@@ -66,7 +66,8 @@ class AnalyticsService {
 
     try {
       if (apiConfig.mode === 'real') {
-        await apiClient.post('/analytics/track', { events });
+        // Backend expects an array or a single event, not { events: [...] }
+        await apiClient.post('/api/analytics/track', events);
       }
       // In mock mode, just clear the queue (already logged in console)
     } catch (error) {

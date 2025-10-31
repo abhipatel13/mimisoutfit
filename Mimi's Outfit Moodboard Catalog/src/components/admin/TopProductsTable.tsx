@@ -48,7 +48,7 @@ export function TopProductsTable({ products, loading }: TopProductsTableProps) {
       <CardContent>
         {/* Mobile Card View */}
         <div className="block lg:hidden space-y-3">
-          {products.map((product, index) => (
+          {(products || []).map((product, index) => (
             <Link 
               key={product.id}
               to={`/products/${product.slug}`}
@@ -112,7 +112,7 @@ export function TopProductsTable({ products, loading }: TopProductsTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((product, index) => (
+              {(products || []).map((product, index) => (
                 <TableRow key={product.id}>
                   <TableCell>
                     <Link 

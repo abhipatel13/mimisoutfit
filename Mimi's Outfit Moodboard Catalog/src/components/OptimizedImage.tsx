@@ -4,7 +4,7 @@ import { decode } from 'blurhash';
 import { isValidBlurhash, getBlurhashDimensions } from '@/lib/blurhash.utils';
 
 interface OptimizedImageProps {
-  src: string;
+  src?: string;
   alt: string;
   blurhash?: string; // Blurhash string for LQIP (Low Quality Image Placeholder)
   className?: string;
@@ -125,7 +125,8 @@ export default function OptimizedImage({
   // Generate optimized image URLs for different sizes
   // This assumes you're using a CDN or image optimization service
   // Adjust based on your actual image hosting setup
-  const generateSrcSet = (src: string) => {
+  const generateSrcSet = (src?: string) => {
+    if (!src) return undefined;
     // If using Unsplash, generate multiple sizes
     if (src.includes('unsplash.com')) {
       return `
@@ -172,8 +173,8 @@ export default function OptimizedImage({
       {/* Hidden canvas for blurhash generation */}
       <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
 
-      {/* Error State */}
-      {hasError ? (
+      {/* Missing src or Error State */}
+      {!src || hasError ? (
         <div className="image-placeholder w-full h-full">
           <div className="text-center">
             <ImageOff className="h-12 w-12 text-muted-foreground/40 mx-auto mb-2" />

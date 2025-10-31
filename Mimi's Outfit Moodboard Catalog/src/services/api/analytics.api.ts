@@ -43,10 +43,27 @@ export const analyticsApi = {
     const headers = getAuthHeaders();
 
     if (apiConfig.mode === 'real') {
-      return apiClient.get<AnalyticsOverview>('/admin/analytics/overview', {
+      const flat = await apiClient.get<any>('/admin/analytics/overview', {
         params: { timeRange },
         headers,
       });
+      // Backend returns flat fields; adapt to AnalyticsOverview shape
+      const overview: AnalyticsOverview = {
+        metrics: {
+          totalVisitors: flat.totalVisitors ?? 0,
+          totalPageViews: flat.totalPageViews ?? 0,
+          totalProductViews: flat.totalProductViews ?? 0,
+          totalMoodboardViews: flat.totalMoodboardViews ?? 0,
+          totalSearches: flat.totalSearches ?? 0,
+          totalFavorites: flat.totalFavorites ?? 0,
+          totalAffiliateClicks: flat.totalAffiliateClicks ?? 0,
+          avgSessionDuration: flat.avgSessionDuration ?? 0,
+        },
+        topProducts: [],
+        topMoodboards: [],
+        topSearchTerms: [],
+      } as any;
+      return overview;
     }
 
     // Mock implementation with realistic data
@@ -308,7 +325,7 @@ export const analyticsApi = {
     const headers = getAuthHeaders();
 
     if (apiConfig.mode === 'real') {
-      return apiClient.get<TimeSeriesData[]>('/admin/analytics/timeseries', {
+      return apiClient.get<TimeSeriesData[]>('/api/analytics/timeseries', {
         params: { timeRange },
         headers,
       });
@@ -344,7 +361,7 @@ export const analyticsApi = {
     const headers = getAuthHeaders();
 
     if (apiConfig.mode === 'real') {
-      return apiClient.get<CategoryDistribution[]>('/admin/analytics/categories', {
+      return apiClient.get<CategoryDistribution[]>('/api/analytics/categories', {
         params: { timeRange },
         headers,
       });
@@ -372,7 +389,7 @@ export const analyticsApi = {
     const headers = getAuthHeaders();
 
     if (apiConfig.mode === 'real') {
-      return apiClient.get<ConversionFunnel[]>('/admin/analytics/funnel', {
+      return apiClient.get<ConversionFunnel[]>('/api/analytics/funnel', {
         params: { timeRange },
         headers,
       });
@@ -421,7 +438,7 @@ export const analyticsApi = {
     const headers = getAuthHeaders();
 
     if (apiConfig.mode === 'real') {
-      return apiClient.get<TrendData[]>('/admin/analytics/trends', {
+      return apiClient.get<TrendData[]>('/api/analytics/trends', {
         params: { timeRange },
         headers,
       });

@@ -82,9 +82,9 @@ export default function AdminAnalyticsPage() {
       ]);
       setOverview(overviewData);
       setUserBehavior(behaviorData);
-      setTimeSeriesData(timeSeriesResult);
-      setCategoryData(categoryResult);
-      setFunnelData(funnelResult);
+      setTimeSeriesData(Array.isArray(timeSeriesResult?.data) ? timeSeriesResult.data : (Array.isArray(timeSeriesResult) ? timeSeriesResult : []));
+      setCategoryData(Array.isArray(categoryResult?.data) ? categoryResult.data : (Array.isArray(categoryResult) ? categoryResult : []));
+      setFunnelData(Array.isArray(funnelResult?.data) ? funnelResult.data : (Array.isArray(funnelResult) ? funnelResult : []));
     } catch (error) {
       console.error('Failed to load analytics:', error);
       toast({
@@ -271,7 +271,7 @@ export default function AdminAnalyticsPage() {
                     </div>
                   ) : (
                     <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                      {overview?.topMoodboards.map(moodboard => (
+                      {(overview?.topMoodboards || []).map(moodboard => (
                         <Card key={moodboard.id} className="overflow-hidden">
                           <img
                             src={moodboard.coverImage}
@@ -315,7 +315,7 @@ export default function AdminAnalyticsPage() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {overview?.topSearchTerms.map((term, index) => (
+                      {(overview?.topSearchTerms || []).map((term, index) => (
                         <div key={term.term} className="flex items-center justify-between p-2 sm:p-3 rounded-lg border">
                           <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                             <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary/10 text-primary font-medium text-xs sm:text-sm flex-shrink-0">
@@ -389,7 +389,7 @@ export default function AdminAnalyticsPage() {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {userBehavior?.topReferrers.map(referrer => (
+                        {(userBehavior?.topReferrers || []).map(referrer => (
                           <div key={referrer.source} className="flex items-center justify-between">
                             <div className="flex-1">
                               <p className="font-medium">{referrer.source}</p>
