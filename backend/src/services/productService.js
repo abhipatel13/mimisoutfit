@@ -18,14 +18,23 @@ async function safeExec(label, fn) {
 }
 
 /* ============================================================
- * 1️⃣ SEARCH PRODUCTS (full-text SQL query)
+ * 1️⃣ SEARCH PRODUCTS (supports both full-text and partial matching)
  * ============================================================ */
 export async function searchProducts({ search, category, brand, minPrice, maxPrice, sortBy, limit, skip, user }) {
   let paramIndex = 1
-  const params = [search]
+  const params = []
+  
+  // Use ILIKE for partial matching (works as you type) instead of plainto_tsquery (whole words only)
+  // This allows matching "Clas" -> "Classic" and "Tren" -> "Trench"
+  const searchPattern = `%${search}%`
+  params.push(searchPattern)
+  
   let whereClauses = `
-    WHERE to_tsvector('english', p.name || ' ' || COALESCE(p.brand,'') || ' ' || COALESCE(p.description,'')) 
-      @@ plainto_tsquery('english', $${paramIndex})
+    WHERE (
+      p.name ILIKE $${paramIndex} OR
+      COALESCE(p.brand, '') ILIKE $${paramIndex} OR
+      COALESCE(p.description, '') ILIKE $${paramIndex}
+    )
   `
 
   if (category) {
@@ -59,23 +68,22 @@ export async function searchProducts({ search, category, brand, minPrice, maxPri
   params.push(Number(skip))
   const offsetPlaceholder = `$${paramIndex}`
 
+  // Calculate relevance score based on where the match occurs (name > brand > description)
+  const searchParamIndex = 1 // Search pattern is always the first parameter
   const query = `
     SELECT 
       p.*,
       ARRAY_REMOVE(ARRAY_AGG(pt.tag), NULL) AS tags,
-      ts_rank_cd(
-        to_tsvector('english', p.name || ' ' || COALESCE(p.brand,'') || ' ' || COALESCE(p.description,'')),
-        plainto_tsquery('english', $1)
-      ) AS rank,
-      ts_headline('english', p.name, plainto_tsquery('english', $1),
-                  'StartSel=<b>, StopSel=</b>, MaxWords=30, MinWords=5, ShortWord=3, HighlightAll=TRUE') AS name_highlight,
-      ts_headline('english', p.description, plainto_tsquery('english', $1),
-                  'StartSel=<b>, StopSel=</b>, MaxWords=50, MinWords=5, ShortWord=3, HighlightAll=TRUE') AS description_highlight
+      CASE
+        WHEN p.name ILIKE $${searchParamIndex} THEN 3
+        WHEN COALESCE(p.brand, '') ILIKE $${searchParamIndex} THEN 2
+        ELSE 1
+      END AS relevance
     FROM products p
     LEFT JOIN product_tags pt ON p.id = pt.product_id
     ${whereClauses}
     GROUP BY p.id
-    ORDER BY ${sortBy === 'newest' ? 'p.created_at DESC' : 'rank DESC'}
+    ORDER BY ${sortBy === 'newest' ? 'p.created_at DESC' : 'relevance DESC, p.name ASC'}
     LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder};
   `
 
@@ -83,9 +91,11 @@ export async function searchProducts({ search, category, brand, minPrice, maxPri
     prisma.$queryRawUnsafe(query, ...params)
   )
 
-  const totalQuery = `SELECT COUNT(*) FROM products p ${whereClauses};`
-  const totalResult = await safeExec('Full-text count query', () =>
-    prisma.$queryRawUnsafe(totalQuery, ...params.slice(0, paramIndex - 2))
+  // Remove limit/skip params for count query
+  const countParams = params.slice(0, paramIndex - 2)
+  const totalQuery = `SELECT COUNT(DISTINCT p.id) FROM products p ${whereClauses};`
+  const totalResult = await safeExec('Search count query', () =>
+    prisma.$queryRawUnsafe(totalQuery, ...countParams)
   )
 
   // ✅ Normalize tags to a JS array of strings
