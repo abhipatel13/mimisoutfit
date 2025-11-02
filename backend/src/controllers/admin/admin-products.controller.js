@@ -4,8 +4,20 @@ const prisma = new PrismaClient()
 // Create Product
 export const createProduct = async (req, res) => {
   try {
-    const data = req.body
-    const product = await prisma.product.create({ data })
+    const { tags, ...productData } = req.body
+    
+    // Only include tags if array is non-empty, using Prisma's nested create syntax
+    const createData = {
+      ...productData,
+      ...(tags && Array.isArray(tags) && tags.length > 0
+        ? { tags: { create: tags.map(tag => ({ tag })) } }
+        : {})
+    }
+    
+    const product = await prisma.product.create({
+      data: createData,
+      include: { tags: true }
+    })
     res.status(201).json(product)
   } catch (err) {
     console.error('Create product error:', err)
@@ -17,8 +29,26 @@ export const createProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params
-    const data = req.body
-    const product = await prisma.product.update({ where: { id }, data })
+    const { tags, ...productData } = req.body
+    
+    // Handle tags: delete existing and create new ones if provided
+    const updateData = {
+      ...productData,
+      ...(tags !== undefined && Array.isArray(tags)
+        ? {
+            tags: {
+              deleteMany: {}, // Delete all existing tags
+              ...(tags.length > 0 ? { create: tags.map(tag => ({ tag })) } : {}) // Create new tags if any
+            }
+          }
+        : {})
+    }
+    
+    const product = await prisma.product.update({
+      where: { id },
+      data: updateData,
+      include: { tags: true }
+    })
     res.json(product)
   } catch (err) {
     console.error('Update product error:', err)
