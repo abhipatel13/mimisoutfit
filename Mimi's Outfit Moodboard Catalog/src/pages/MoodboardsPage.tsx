@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import SectionHeader from '@/components/SectionHeader';
 import MoodboardCard from '@/components/MoodboardCard';
 import SkeletonMoodboard from '@/components/SkeletonMoodboard';
@@ -9,13 +9,35 @@ import { SEO } from '@/components/SEO';
 import { useMoodboards } from '@/hooks/use-moodboards';
 import { useAuthStore } from '@/store/auth-store';
 import { trackFilterChange } from '@/services/analytics.service';
-
-const filterTags = ['all', 'parisian', 'minimalist', 'luxe', 'chic', 'modern'];
+import { moodboardsApi } from '@/services/api';
 
 export default function MoodboardsPage() {
   const [selectedTag, setSelectedTag] = useState('all');
   const [showUnpublished, setShowUnpublished] = useState(false);
+  const [filterTags, setFilterTags] = useState<string[]>(['all']); // Start with 'all' as default
+  const [tagsLoading, setTagsLoading] = useState(true);
   const { isAuthenticated } = useAuthStore();
+
+  // Fetch filter tags from API
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        setTagsLoading(true);
+        const tags = await moodboardsApi.getMoodboardTags();
+        // Sort tags alphabetically and prepend 'all'
+        const sortedTags = tags.sort((a, b) => a.localeCompare(b));
+        setFilterTags(['all', ...sortedTags]);
+      } catch (error) {
+        console.error('Failed to fetch moodboard tags:', error);
+        // Fallback to default tags on error
+        setFilterTags(['all', 'parisian', 'minimalist', 'luxe', 'chic', 'modern']);
+      } finally {
+        setTagsLoading(false);
+      }
+    };
+
+    fetchTags();
+  }, []);
 
   // Use live API hook for moodboards
   const { moodboards: allMoodboards, loading: isLoading } = useMoodboards({
@@ -71,21 +93,32 @@ export default function MoodboardsPage() {
       <section className="mobile-container mb-8 sm:mb-12">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
-            {filterTags.map((tag) => (
-              <Button
-                key={tag}
-                variant={selectedTag === tag ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleTagChange(tag)}
-                className={`capitalize transition-all duration-200 touch-target ${
-                  selectedTag === tag 
-                    ? 'bg-primary text-white shadow-sm' 
-                    : 'border-neutral-300 hover:border-primary hover:text-primary'
-                }`}
-              >
-                {tag === 'all' ? 'All Looks' : `#${tag}`}
-              </Button>
-            ))}
+            {tagsLoading ? (
+              <div className="flex gap-2 sm:gap-3">
+                {[...Array(6)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-9 w-20 bg-neutral-200 animate-pulse rounded-md"
+                  />
+                ))}
+              </div>
+            ) : (
+              filterTags.map((tag) => (
+                <Button
+                  key={tag}
+                  variant={selectedTag === tag ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleTagChange(tag)}
+                  className={`capitalize transition-all duration-200 touch-target ${
+                    selectedTag === tag 
+                      ? 'bg-primary text-white shadow-sm' 
+                      : 'border-neutral-300 hover:border-primary hover:text-primary'
+                  }`}
+                >
+                  {tag === 'all' ? 'All Looks' : `#${tag}`}
+                </Button>
+              ))
+            )}
           </div>
         </div>
       </section>

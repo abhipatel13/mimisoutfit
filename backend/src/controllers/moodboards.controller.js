@@ -26,21 +26,75 @@ const normalizeMoodboard = (moodboard) => ({
 /**
  * GET /moodboards
  * Returns a list of published moodboards with products & tags.
+ * Query params: tag, search, featured, page, limit
  */
 export const listMoodboards = async (req, res) => {
   try {
     console.log('📸 Listing moodboards with query:', req.query)
 
-    const moodboards = await prisma.moodboard.findMany({
-      where: { isPublished: true },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        tags: true,
-     }
-    })
+    const { tag, search, featured, page, limit } = req.query
+
+    // Build where clause
+    const where = {
+      isPublished: true,
+      // Filter by tag if provided
+      ...(tag ? { 
+        tags: { 
+          some: { 
+            tag: { equals: tag, mode: 'insensitive' } 
+          } 
+        } 
+      } : {}),
+      // Filter by featured status if provided
+      ...(featured !== undefined ? { isFeatured: featured === 'true' } : {}),
+      // Search in title, description, or tags
+      ...(search ? {
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { tags: { some: { tag: { contains: search, mode: 'insensitive' } } } }
+        ]
+      } : {})
+    }
+
+    // Parse pagination
+    const pageNum = Math.max(1, parseInt(page) || 1)
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 12))
+    const skip = (pageNum - 1) * limitNum
+
+    // Fetch moodboards with pagination
+    const [moodboards, total] = await Promise.all([
+      prisma.moodboard.findMany({
+        where,
+        skip,
+        take: limitNum,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          tags: true,
+          products: {
+            include: { product: true },
+            orderBy: { sortOrder: 'asc' }
+          }
+        }
+      }),
+      prisma.moodboard.count({ where })
+    ])
+
+    const totalPages = Math.ceil(total / limitNum)
 
     const data = moodboards.map(normalizeMoodboard)
-    res.json({ data })
+    
+    res.json({
+      data,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1
+      }
+    })
   } catch (err) {
     console.error('❌ Moodboard list error:', err)
     res.status(500).json({ error: 'Failed to fetch moodboards' })
