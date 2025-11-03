@@ -36,23 +36,59 @@ export const createMoodboard = async (req, res) => {
 }
 
 export const updateMoodboard = async (req, res) => {
-  const { id } = req.params
-  const data = req.body
+  try {
+    const { id } = req.params
+    const { tags, stylingTips, productIds, ...moodboardData } = req.body
 
-  const moodboard = await prisma.moodboard.update({
-    where: { id },
-    data: {
-      title: data.title,
-      description: data.description,
-      isFeatured: data.isFeatured,
-      products: {
-        deleteMany: {},
-        create: data.productIds.map((pid, i) => ({ productId: pid, sortOrder: i }))
+    // Handle tags: delete existing and create new ones if provided
+    const updateData = {
+      ...moodboardData,
+      ...(tags !== undefined && Array.isArray(tags)
+        ? {
+            tags: {
+              deleteMany: {}, // Delete all existing tags
+              ...(tags.length > 0 ? { create: tags.map(tag => ({ tag })) } : {}) // Create new tags if any
+            }
+          }
+        : {}),
+      // Handle stylingTips: delete existing and create new ones if provided
+      ...(stylingTips !== undefined && Array.isArray(stylingTips)
+        ? {
+            stylingTips: {
+              deleteMany: {}, // Delete all existing styling tips
+              ...(stylingTips.length > 0 
+                ? { create: stylingTips.map((tip, i) => ({ tip, sortOrder: i })) } 
+                : {}) // Create new tips if any
+            }
+          }
+        : {}),
+      // Handle products: delete existing and create new ones if provided
+      ...(productIds !== undefined && Array.isArray(productIds)
+        ? {
+            products: {
+              deleteMany: {},
+              ...(productIds.length > 0 
+                ? { create: productIds.map((pid, i) => ({ productId: pid, sortOrder: i })) } 
+                : {})
+            }
+          }
+        : {})
+    }
+
+    const moodboard = await prisma.moodboard.update({
+      where: { id },
+      data: updateData,
+      include: { 
+        tags: true, 
+        products: { include: { product: true } },
+        stylingTips: true
       }
-    },
-    include: { tags: true, products: { include: { product: true } } }
-  })
-  res.json(moodboard)
+    })
+    res.json(moodboard)
+  } catch (err) {
+    console.error('Update moodboard error:', err)
+    res.status(500).json({ error: 'Failed to update moodboard' })
+  }
 }
 
 export const deleteMoodboard = async (req, res) => {
